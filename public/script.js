@@ -138,7 +138,7 @@ async function uploadFiles() {
 
     try {
 
-        const response = await fetch('http://localhost:3000/upload', {
+        const response = await fetch('https://eid-card-9j9shvyj6-abeers-projects-cb73c349.vercel.app/upload', {
 
             method: 'POST',
 
