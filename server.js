@@ -24,6 +24,11 @@ app.use(express.static('public'));
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+app.get("/", (req, res) => {
+
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+
+});
 
 
 // التأكد من وجود مجلد `uploads`
