@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+
+<html lang="ar">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>بطاقة تهنئة العيد</title>
+
+    <style>
+
+        body {
+
+            text-align: center;
+
+            font-family: Arial, sans-serif;
+
+            direction: rtl;
+
+            background-color: #f8f9fa;
+
+        }
+
+        .container {
+
+            margin-top: 50px;
+
+        }
+
+        #preview {
+
+            margin-top: 20px;
+
+            display: none;
+
+            max-width: 100%;
+
+            border: 2px solid #000;
+
+        }
+
+        audio {
+
+            margin-top: 10px;
+
+            display: none;
+
+        }
+
+        button {
+
+            margin: 10px;
+
+            padding: 10px;
+
+            font-size: 16px;
+
+            cursor: pointer;
+
+            border: none;
+
+            border-radius: 5px;
+
+            background-color: #28a745;
+
+            color: white;
+
+        }
+
+        button:disabled {
+
+            background-color: #ccc;
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>كل عام وأنتم بخير</h1>
+
+        <h2>عيدكم مبارك</h2>
+
+        <h3>إنشاء بطاقة تهنئة العيد</h3>
+
+
+
+        <input type="file" id="imageInput" accept="image/*">
+
+        <button onclick="startRecording()">🎤 تسجيل صوت التهنئة</button>
+
+        <button onclick="stopRecording()" disabled id="stopBtn">⏹️ إيقاف التسجيل</button>
+
+
+
+        <br><br>
+
+        <img id="preview" alt="معاينة الصورة">
+
+        <audio id="audioPlayback" controls></audio>
+
+
+
+        <br>
+
+        <button onclick="uploadFiles()" id="saveBtn" style="display:none;">🎥 حفظ التهنئة كفيديو</button>
+
+    </div>
+
+
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
+
