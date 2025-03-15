@@ -72,23 +72,37 @@ app.post("/upload", upload.fields([{ name: "image" }, { name: "audio" }]), (req,
 
     const audioFile = req.files.audio[0].path;
 
-    const outputVideo = path.join(uploadDir, `${Date.now()}-greeting.mp4`);
+    const outputFileName = `${Date.now()}-greeting.mp4`;
+
+    const outputVideo = path.join(uploadDir, outputFileName);
 
 
 
-    const ffmpegCommand = `ffmpeg -loop 1 -i ${imageFile} -i ${audioFile} -c:v libx264 -tune stillimage -c:a aac -b:a 192k -shortest ${outputVideo}`;
+    const ffmpegCommand = `ffmpeg -loop 1 -i "${imageFile}" -i "${audioFile}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -shortest -movflags +faststart "${outputVideo}"`;
 
-    
+
 
     exec(ffmpegCommand, (error) => {
 
         if (error) {
 
+            console.error("FFmpeg Error:", error);
+
             return res.status(500).json({ error: "فشل دمج الصوت مع الصورة." });
 
         }
 
-        res.json({ message: "تم إنشاء فيديو التهنئة!", videoUrl: `/uploads/${path.basename(outputVideo)}` });
+        
+
+        // إرسال رابط الفيديو النهائي للمستخدم
+
+        res.json({ 
+
+            message: "تم إنشاء فيديو التهنئة بنجاح!",
+
+            videoUrl: `https://${process.env.VERCEL_URL || "your-vercel-backend.vercel.app"}/download/${outputFileName}`
+
+        });
 
     });
 
@@ -96,15 +110,15 @@ app.post("/upload", upload.fields([{ name: "image" }, { name: "audio" }]), (req,
 
 
 
-// السماح للمستخدمين بتحميل الفيديو
+// السماح بتنزيل الفيديو عبر مسار `/download/`
 
-app.get("/uploads/:filename", (req, res) => {
+app.get("/download/:filename", (req, res) => {
 
     const filePath = path.join(uploadDir, req.params.filename);
 
     if (fs.existsSync(filePath)) {
 
-        res.sendFile(filePath);
+        res.download(filePath);  // هذه الميزة تفرض التحميل بدلاً من العرض
 
     } else {
 

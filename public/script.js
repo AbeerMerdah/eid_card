@@ -1,3 +1,4 @@
+
 document.getElementById("recordButton").addEventListener("click", startRecording);
 
 document.getElementById("stopButton").addEventListener("click", stopRecording);
@@ -140,7 +141,7 @@ async function uploadFiles() {
 
         if (response.ok) {
 
-            const videoUrl = `https://eid-card-9j9shvyj6-abeers-projects-cb73c349.vercel.app${result.videoUrl}`;
+            const videoUrl = result.videoUrl;
 
             const videoElement = document.getElementById("videoPlayer");
 
@@ -205,6 +206,3 @@ function saveToCameraRoll() {
     alert("تم حفظ الفيديو! يمكنك العثور عليه في التنزيلات أو ألبوم الكاميرا.");
 
 }
-
-
-
