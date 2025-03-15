@@ -18,6 +18,8 @@ const PORT = process.env.PORT || 3000;
 
 
 
+// السماح بالاتصال من جميع الأجهزة
+
 app.use(cors());
 
 app.use(express.json());
@@ -36,6 +38,8 @@ if (!fs.existsSync(uploadDir)) {
 
 
 
+// إعداد `Multer` لتخزين الملفات
+
 const storage = multer.diskStorage({
 
     destination: uploadDir,
@@ -51,6 +55,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 
+
+// نقطة رفع الملفات
 
 app.post("/upload", upload.fields([{ name: "image" }, { name: "audio" }]), (req, res) => {
 
@@ -90,6 +96,8 @@ app.post("/upload", upload.fields([{ name: "image" }, { name: "audio" }]), (req,
 
 
 
+// السماح للمستخدمين بتحميل الفيديو
+
 app.get("/uploads/:filename", (req, res) => {
 
     const filePath = path.join(uploadDir, req.params.filename);
@@ -107,6 +115,8 @@ app.get("/uploads/:filename", (req, res) => {
 });
 
 
+
+// تشغيل الخادم عالميًا
 
 app.listen(PORT, "0.0.0.0", () => {
 
