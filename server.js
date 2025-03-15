@@ -1,10 +1,14 @@
-const express = require('express');
+const express = require("express");
 
-const cors = require('cors');
+const cors = require("cors");
 
-const multer = require('multer');
+const multer = require("multer");
 
-const path = require('path');
+const path = require("path");
+
+const fs = require("fs");
+
+const { exec } = require("child_process");
 
 
 
@@ -14,8 +18,6 @@ const PORT = process.env.PORT || 3000;
 
 
 
-// تفعيل CORS للسماح بالاتصالات بين `Frontend` و `Backend`
-
 app.use(cors());
 
 app.use(express.json());
@@ -24,15 +26,23 @@ app.use(express.urlencoded({ extended: true }));
 
 
 
-// تهيئة المجلد الذي سيتم حفظ الصور فيه
+const uploadDir = path.join(__dirname, "uploads");
+
+if (!fs.existsSync(uploadDir)) {
+
+    fs.mkdirSync(uploadDir, { recursive: true });
+
+}
+
+
 
 const storage = multer.diskStorage({
 
-    destination: "uploads/",
+    destination: uploadDir,
 
     filename: (req, file, cb) => {
 
-        cb(null, file.originalname);
+        cb(null, Date.now() + "-" + file.originalname);
 
     }
 
@@ -42,29 +52,63 @@ const upload = multer({ storage });
 
 
 
-// توفير نقطة وصول للصفحة الرئيسية
+app.post("/upload", upload.fields([{ name: "image" }, { name: "audio" }]), (req, res) => {
 
-app.get("/", (req, res) => {
+    if (!req.files || !req.files.image || !req.files.audio) {
 
-    res.sendFile(path.join(__dirname, "public", "index.html"));
+        return res.status(400).json({ error: "يرجى رفع الصورة والصوت معًا." });
+
+    }
+
+
+
+    const imageFile = req.files.image[0].path;
+
+    const audioFile = req.files.audio[0].path;
+
+    const outputVideo = path.join(uploadDir, `${Date.now()}-greeting.mp4`);
+
+
+
+    const ffmpegCommand = `ffmpeg -loop 1 -i ${imageFile} -i ${audioFile} -c:v libx264 -tune stillimage -c:a aac -b:a 192k -shortest ${outputVideo}`;
+
+    
+
+    exec(ffmpegCommand, (error) => {
+
+        if (error) {
+
+            return res.status(500).json({ error: "فشل دمج الصوت مع الصورة." });
+
+        }
+
+        res.json({ message: "تم إنشاء فيديو التهنئة!", videoUrl: `/uploads/${path.basename(outputVideo)}` });
+
+    });
 
 });
 
 
 
-// نقطة رفع الصور
+app.get("/uploads/:filename", (req, res) => {
 
-app.post("/upload", upload.single("file"), (req, res) => {
+    const filePath = path.join(uploadDir, req.params.filename);
 
-    res.json({ message: "تم رفع الملف بنجاح!", file: req.file });
+    if (fs.existsSync(filePath)) {
+
+        res.sendFile(filePath);
+
+    } else {
+
+        res.status(404).json({ error: "الملف غير موجود." });
+
+    }
 
 });
 
 
 
-// تشغيل السيرفر
-
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, "0.0.0.0", () => {
 
     console.log(`✅ Server running on port ${PORT}`);
 

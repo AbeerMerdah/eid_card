@@ -1,78 +1,160 @@
-let mediaRecorder;
+const express = require("express");
 
-let audioChunks = [];
+const cors = require("cors");
 
-let imageFile;
+const multer = require("multer");
+
+const path = require("path");
+
+const fs = require("fs");
+
+const { exec } = require("child_process");
 
 
 
-document.getElementById('imageInput').addEventListener('change', function(event) {
+const app = express();
 
-    imageFile = event.target.files[0];
+const PORT = process.env.PORT || 3000;
 
-    const reader = new FileReader();
 
-    reader.onload = function(e) {
 
-        const img = document.getElementById('preview');
+app.use(cors());
 
-        img.src = e.target.result;
+app.use(express.json());
 
-        img.style.display = 'block';
+app.use(express.urlencoded({ extended: true }));
 
-        checkIfReadyToSave(); // تفعيل زر الحفظ إذا كانت الصورة والصوت جاهزين
 
-    };
 
-    reader.readAsDataURL(imageFile);
+const uploadDir = path.join(__dirname, "uploads");
+
+if (!fs.existsSync(uploadDir)) {
+
+    fs.mkdirSync(uploadDir, { recursive: true });
+
+}
+
+
+
+const storage = multer.diskStorage({
+
+    destination: uploadDir,
+
+    filename: (req, file, cb) => {
+
+        cb(null, Date.now() + "-" + file.originalname);
+
+    }
+
+});
+
+const upload = multer({ storage });
+
+
+
+app.post("/upload", upload.fields([{ name: "image" }, { name: "audio" }]), (req, res) => {
+
+    if (!req.files || !req.files.image || !req.files.audio) {
+
+        return res.status(400).json({ error: "يرجى رفع الصورة والصوت معًا." });
+
+    }
+
+
+
+    const imageFile = req.files.image[0].path;
+
+    const audioFile = req.files.audio[0].path;
+
+    const outputVideo = path.join(uploadDir, `${Date.now()}-greeting.mp4`);
+
+
+
+    const ffmpegCommand = `ffmpeg -loop 1 -i ${imageFile} -i ${audioFile} -c:v libx264 -tune stillimage -c:a aac -b:a 192k -shortest ${outputVideo}`;
+
+    
+
+    exec(ffmpegCommand, (error) => {
+
+        if (error) {
+
+            return res.status(500).json({ error: "فشل دمج الصوت مع الصورة." });
+
+        }
+
+        res.json({ message: "تم إنشاء فيديو التهنئة!", videoUrl: `/uploads/${path.basename(outputVideo)}` });
+
+    });
 
 });
 
 
 
-async function startRecording() {
+app.get("/uploads/:filename", (req, res) => {
 
-    try {
+    const filePath = path.join(uploadDir, req.params.filename);
 
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (fs.existsSync(filePath)) {
+
+        res.sendFile(filePath);
+
+    } else {
+
+        res.status(404).json({ error: "الملف غير موجود." });
+
+    }
+
+});
+
+
+
+app.listen(PORT, "0.0.0.0", () => {
+
+    console.log(`✅ Server running on port ${PORT}`);
+
+});
+
+
+
+
+
+
+
+document.getElementById("recordButton").addEventListener("click", startRecording);
+
+document.getElementById("stopButton").addEventListener("click", stopRecording);
+
+document.getElementById("uploadButton").addEventListener("click", uploadFiles);
+
+document.getElementById("saveButton").addEventListener("click", saveVideo);
+
+
+
+let mediaRecorder;
+
+let audioChunks = [];
+
+
+
+function startRecording() {
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
 
         mediaRecorder = new MediaRecorder(stream);
 
         mediaRecorder.start();
 
-        document.getElementById("stopBtn").disabled = false;
-
         audioChunks = [];
 
 
 
-        mediaRecorder.ondataavailable = event => {
+        mediaRecorder.addEventListener("dataavailable", event => {
 
             audioChunks.push(event.data);
 
-        };
+        });
 
-
-
-        mediaRecorder.onstop = () => {
-
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-
-            const audioUrl = URL.createObjectURL(audioBlob);
-
-            document.getElementById("audioPlayback").src = audioUrl;
-
-            document.getElementById("audioPlayback").style.display = "block";
-
-            checkIfReadyToSave(); // تفعيل زر الحفظ بعد التسجيل
-
-        };
-
-    } catch (error) {
-
-        alert("⚠️ تعذر الوصول إلى الميكروفون. تأكد من السماح بالوصول إلى الصوت.");
-
-    }
+    });
 
 }
 
@@ -82,107 +164,91 @@ function stopRecording() {
 
     mediaRecorder.stop();
 
-    document.getElementById("stopBtn").disabled = true;
+    mediaRecorder.addEventListener("stop", () => {
+
+        const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
+
+        const audioFile = new File([audioBlob], "audio.mp3", { type: "audio/mp3" });
+
+        document.getElementById("audioInput").files = createFileList(audioFile);
+
+    });
 
 }
 
 
 
-// تفعيل زر الحفظ بعد رفع صورة وتسجيل صوت
+function createFileList(file) {
 
-function checkIfReadyToSave() {
+    const dataTransfer = new DataTransfer();
 
-    if (document.getElementById('imageInput').files.length > 0 && audioChunks.length > 0) {
+    dataTransfer.items.add(file);
 
-        document.getElementById("saveBtn").style.display = "inline";
-
-    }
+    return dataTransfer.files;
 
 }
 
 
-
-// رفع الملفات إلى الخادم وإنشاء الفيديو
 
 async function uploadFiles() {
 
-    const imageInput = document.getElementById('imageInput');
-
-    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-
-
-
-    if (!imageInput.files[0] || audioChunks.length === 0) {
-
-        alert('❌ يرجى اختيار صورة وتسجيل صوت التهنئة أولًا');
-
-        return;
-
-    }
-
-
-
     const formData = new FormData();
 
-    formData.append('image', imageInput.files[0]);
+    formData.append("image", document.getElementById("imageInput").files[0]);
 
-    formData.append('audio', audioBlob, 'audio.wav');
-
-
-
-    document.getElementById("saveBtn").innerText = "⏳ جارٍ إنشاء الفيديو...";
-
-    document.getElementById("saveBtn").disabled = true;
+    formData.append("audio", document.getElementById("audioInput").files[0]);
 
 
 
-    try {
+    const response = await fetch("eid-card-9j9shvyj6-abeers-projects-cb73c349.vercel.app/upload", {
 
-        const response = await fetch('https://eid-card-9j9shvyj6-abeers-projects-cb73c349.vercel.app/upload', {
+        method: "POST",
 
-            method: 'POST',
+        body: formData
 
-            body: formData
-
-        });
+    });
 
 
 
-        const result = await response.json();
+    const result = await response.json();
 
-        if (result.filePath) {
+    if (response.ok) {
 
-            // ✅ تحميل الفيديو تلقائيًا عند إنشائه
+        const videoUrl = `eid-card-9j9shvyj6-abeers-projects-cb73c349.vercel.app${result.videoUrl}`;
 
-            const a = document.createElement('a');
+        const videoElement = document.getElementById("videoPlayer");
 
-            a.href = result.filePath;
+        videoElement.src = videoUrl;
 
-            a.download = 'eid_greeting.mp4'; // اسم الملف عند الحفظ
+        videoElement.style.display = "block";
 
-            document.body.appendChild(a);
 
-            a.click();
 
-            document.body.removeChild(a);
+        document.getElementById("saveButton").style.display = "block";
 
-        } else {
-
-            alert('❌ حدث خطأ أثناء حفظ الفيديو');
-
-        }
-
-    } catch (error) {
-
-        alert('❌ تعذر الاتصال بالخادم، تأكد من تشغيله.');
-
-    } finally {
-
-        document.getElementById("saveBtn").innerText = "🎥 حفظ التهنئة كفيديو";
-
-        document.getElementById("saveBtn").disabled = false;
+        document.getElementById("saveButton").setAttribute("data-url", videoUrl);
 
     }
+
+}
+
+
+
+function saveVideo() {
+
+    const videoUrl = document.getElementById("saveButton").getAttribute("data-url");
+
+    const a = document.createElement("a");
+
+    a.href = videoUrl;
+
+    a.download = "eid_greeting.mp4";
+
+    document.body.appendChild(a);
+
+    a.click();
+
+    document.body.removeChild(a);
 
 }
 
