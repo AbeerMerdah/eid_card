@@ -126,7 +126,7 @@ async function uploadFiles() {
 
     try {
 
-        const response = await fetch("https://your-vercel-backend.vercel.app/upload", {
+        const response = await fetch("https://eid-card-9j9shvyj6-abeers-projects-cb73c349.vercel.app/upload", {
 
             method: "POST",
 
@@ -140,7 +140,7 @@ async function uploadFiles() {
 
         if (response.ok) {
 
-            const videoUrl = `https://your-vercel-backend.vercel.app${result.videoUrl}`;
+            const videoUrl = `https://eid-card-9j9shvyj6-abeers-projects-cb73c349.vercel.app${result.videoUrl}`;
 
             const videoElement = document.getElementById("videoPlayer");
 
