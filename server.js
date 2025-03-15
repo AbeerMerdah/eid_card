@@ -100,7 +100,7 @@ app.post("/upload", upload.fields([{ name: "image" }, { name: "audio" }]), (req,
 
             message: "تم إنشاء فيديو التهنئة بنجاح!",
 
-            videoUrl: `https://${process.env.VERCEL_URL || "your-vercel-backend.vercel.app"}/download/${outputFileName}`
+            videoUrl: `https://${process.env.VERCEL_URL || "https://eid-card-9j9shvyj6-abeers-projects-cb73c349.vercel.app"}/download/${outputFileName}`
 
         });
 
