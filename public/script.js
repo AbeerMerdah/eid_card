@@ -1,11 +1,10 @@
-
 document.getElementById("recordButton").addEventListener("click", startRecording);
 
 document.getElementById("stopButton").addEventListener("click", stopRecording);
 
 document.getElementById("uploadButton").addEventListener("click", uploadFiles);
 
-document.getElementById("saveButton").addEventListener("click", saveVideo);
+document.getElementById("saveButton").addEventListener("click", saveToCameraRoll);
 
 
 
@@ -17,23 +16,39 @@ let audioChunks = [];
 
 function startRecording() {
 
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    navigator.mediaDevices.getUserMedia({ audio: true })
 
-        mediaRecorder = new MediaRecorder(stream);
+        .then(stream => {
 
-        mediaRecorder.start();
+            mediaRecorder = new MediaRecorder(stream);
 
-        audioChunks = [];
+            mediaRecorder.start();
+
+            audioChunks = [];
 
 
 
-        mediaRecorder.addEventListener("dataavailable", event => {
+            mediaRecorder.addEventListener("dataavailable", event => {
 
-            audioChunks.push(event.data);
+                audioChunks.push(event.data);
+
+            });
+
+
+
+            document.getElementById("recordButton").disabled = true;
+
+            document.getElementById("stopButton").disabled = false;
+
+        })
+
+        .catch(error => {
+
+            console.error("خطأ أثناء تسجيل الصوت:", error);
+
+            alert("تعذر الوصول إلى الميكروفون. تأكد من إعطاء الإذن.");
 
         });
-
-    });
 
 }
 
@@ -41,17 +56,31 @@ function startRecording() {
 
 function stopRecording() {
 
-    mediaRecorder.stop();
+    if (mediaRecorder) {
 
-    mediaRecorder.addEventListener("stop", () => {
+        mediaRecorder.stop();
 
-        const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
+        mediaRecorder.addEventListener("stop", () => {
 
-        const audioFile = new File([audioBlob], "audio.mp3", { type: "audio/mp3" });
+            const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
 
-        document.getElementById("audioInput").files = createFileList(audioFile);
+            const audioFile = new File([audioBlob], "audio.mp3", { type: "audio/mp3" });
 
-    });
+
+
+            // ربط الصوت بحقل الإدخال المخفي
+
+            document.getElementById("audioInput").files = createFileList(audioFile);
+
+        });
+
+
+
+        document.getElementById("recordButton").disabled = false;
+
+        document.getElementById("stopButton").disabled = true;
+
+    }
 
 }
 
@@ -71,41 +100,73 @@ function createFileList(file) {
 
 async function uploadFiles() {
 
+    const imageFile = document.getElementById("imageInput").files[0];
+
+    const audioFile = document.getElementById("audioInput").files[0];
+
+
+
+    if (!imageFile || !audioFile) {
+
+        alert("يرجى تحديد صورة وتسجيل الصوت قبل الرفع.");
+
+        return;
+
+    }
+
+
+
     const formData = new FormData();
 
-    formData.append("image", document.getElementById("imageInput").files[0]);
+    formData.append("image", imageFile);
 
-    formData.append("audio", document.getElementById("audioInput").files[0]);
-
-
-
-    const response = await fetch("https://eid-card-9j9shvyj6-abeers-projects-cb73c349.vercel.app/upload", {
-
-        method: "POST",
-
-        body: formData
-
-    });
+    formData.append("audio", audioFile);
 
 
 
-    const result = await response.json();
+    try {
 
-    if (response.ok) {
+        const response = await fetch("https://your-vercel-backend.vercel.app/upload", {
 
-        const videoUrl = `https://eid-card-9j9shvyj6-abeers-projects-cb73c349.vercel.app/${result.videoUrl}`;
+            method: "POST",
 
-        const videoElement = document.getElementById("videoPlayer");
+            body: formData
 
-        videoElement.src = videoUrl;
-
-        videoElement.style.display = "block";
+        });
 
 
 
-        document.getElementById("saveButton").style.display = "block";
+        const result = await response.json();
 
-        document.getElementById("saveButton").setAttribute("data-url", videoUrl);
+        if (response.ok) {
+
+            const videoUrl = `https://your-vercel-backend.vercel.app${result.videoUrl}`;
+
+            const videoElement = document.getElementById("videoPlayer");
+
+            videoElement.src = videoUrl;
+
+            videoElement.style.display = "block";
+
+
+
+            // إظهار زر الحفظ بعد نجاح العملية
+
+            document.getElementById("saveButton").style.display = "block";
+
+            document.getElementById("saveButton").setAttribute("data-url", videoUrl);
+
+        } else {
+
+            alert("حدث خطأ أثناء رفع الملفات.");
+
+        }
+
+    } catch (error) {
+
+        console.error("خطأ:", error);
+
+        alert("تعذر الاتصال بالخادم.");
 
     }
 
@@ -113,9 +174,19 @@ async function uploadFiles() {
 
 
 
-function saveVideo() {
+function saveToCameraRoll() {
 
     const videoUrl = document.getElementById("saveButton").getAttribute("data-url");
+
+    if (!videoUrl) {
+
+        alert("لا يوجد فيديو لحفظه!");
+
+        return;
+
+    }
+
+
 
     const a = document.createElement("a");
 
@@ -129,4 +200,11 @@ function saveVideo() {
 
     document.body.removeChild(a);
 
+
+
+    alert("تم حفظ الفيديو! يمكنك العثور عليه في التنزيلات أو ألبوم الكاميرا.");
+
 }
+
+
+
