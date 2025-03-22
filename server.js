@@ -1,4 +1,4 @@
-const express = require("express");
+/*const express = require("express");
 
 const cors = require("cors");
 
@@ -135,6 +135,73 @@ app.get("/download/:filename", (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
 
     console.log(`✅ Server running on port ${PORT}`);
+
+});
+
+*/
+
+
+
+
+const app = express();
+
+const upload = multer({ dest: 'uploads/' });
+
+
+
+app.post('/merge', upload.fields([{ name: 'audio' }, { name: 'image' }]), (req, res) => {
+
+    const audioPath = req.files['audio'][0].path;
+
+    const imagePath = req.files['image'][0].path;
+
+    const outputPath = path.join(__dirname, 'output.mp4');
+
+
+
+    ffmpeg()
+
+        .input(imagePath)
+
+        .input(audioPath)
+
+        .outputOptions('-c:v libx264')
+
+        .outputOptions('-c:a aac')
+
+        .output(outputPath)
+
+        .on('end', () => {
+
+            res.download(outputPath, 'video.mp4', () => {
+
+                fs.unlinkSync(audioPath);
+
+                fs.unlinkSync(imagePath);
+
+                fs.unlinkSync(outputPath);
+
+            });
+
+        })
+
+        .on('error', (err) => {
+
+            console.error("⚠️ خطأ أثناء معالجة الفيديو:", err);
+
+            res.status(500).send("حدث خطأ أثناء معالجة الفيديو.");
+
+        })
+
+        .run();
+
+});
+
+
+
+app.listen(3000, () => {
+
+    console.log('الخادم يعمل على http://localhost:3000');
 
 });
 
