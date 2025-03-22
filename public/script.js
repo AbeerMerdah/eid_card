@@ -1,115 +1,154 @@
-
-document.getElementById("recordButton").addEventListener("click", startRecording);
-
-document.getElementById("stopButton").addEventListener("click", stopRecording);
-
-document.getElementById("uploadButton").addEventListener("click", uploadFiles);
-
-document.getElementById("saveButton").addEventListener("click", saveToCameraRoll);
-
-
-
 let mediaRecorder;
 
 let audioChunks = [];
 
+let audioBlob;
 
+let audioUrl;
 
-function startRecording() {
-
-    navigator.mediaDevices.getUserMedia({ audio: true })
-
-        .then(stream => {
-
-            mediaRecorder = new MediaRecorder(stream);
-
-            mediaRecorder.start();
-
-            audioChunks = [];
+let imageFile;
 
 
 
-            mediaRecorder.addEventListener("dataavailable", event => {
+// ⏺️ بدء تسجيل الصوت
 
-                audioChunks.push(event.data);
+document.getElementById('start-recording').addEventListener('click', async () => {
 
-            });
+    try {
 
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
 
-            document.getElementById("recordButton").disabled = true;
-
-            document.getElementById("stopButton").disabled = false;
-
-        })
-
-        .catch(error => {
-
-            console.error("خطأ أثناء تسجيل الصوت:", error);
-
-            alert("تعذر الوصول إلى الميكروفون. تأكد من إعطاء الإذن.");
-
-        });
-
-}
+        audioChunks = [];
 
 
 
-function stopRecording() {
+        mediaRecorder.ondataavailable = event => {
+
+            audioChunks.push(event.data);
+
+        };
+
+
+
+        mediaRecorder.start();
+
+
+
+        document.getElementById('start-recording').disabled = true;
+
+        document.getElementById('stop-recording').disabled = false;
+
+
+
+    } catch (error) {
+
+        console.error("⚠️ خطأ في تشغيل الميكروفون:", error);
+
+        alert("يرجى السماح بالوصول إلى الميكروفون.");
+
+    }
+
+});
+
+
+
+// ⏹️ إيقاف تسجيل الصوت
+
+document.getElementById('stop-recording').addEventListener('click', () => {
 
     if (mediaRecorder) {
 
         mediaRecorder.stop();
 
-        mediaRecorder.addEventListener("stop", () => {
+        mediaRecorder.onstop = () => {
 
-            const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
+            audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
 
-            const audioFile = new File([audioBlob], "audio.mp3", { type: "audio/mp3" });
-
-
-
-            // ربط الصوت بحقل الإدخال المخفي
-
-            document.getElementById("audioInput").files = createFileList(audioFile);
-
-        });
+            audioUrl = URL.createObjectURL(audioBlob);
 
 
 
-        document.getElementById("recordButton").disabled = false;
+            const audioElement = document.getElementById('audio');
 
-        document.getElementById("stopButton").disabled = true;
+            audioElement.src = audioUrl;
+
+            audioElement.style.display = 'block';
+
+
+
+            const previewAudio = document.getElementById('preview-audio');
+
+            previewAudio.src = audioUrl;
+
+            previewAudio.style.display = 'block';
+
+        };
 
     }
 
-}
+
+
+    document.getElementById('start-recording').disabled = false;
+
+    document.getElementById('stop-recording').disabled = true;
+
+});
 
 
 
-function createFileList(file) {
+// 📷 تحميل الصورة
 
-    const dataTransfer = new DataTransfer();
+document.getElementById('upload-image').addEventListener('click', () => {
 
-    dataTransfer.items.add(file);
+    const imageInput = document.getElementById('image-upload');
 
-    return dataTransfer.files;
+    const previewImage = document.getElementById('preview-image');
 
-}
-
-
-
-async function uploadFiles() {
-
-    const imageFile = document.getElementById("imageInput").files[0];
-
-    const audioFile = document.getElementById("audioInput").files[0];
+    const saveButton = document.getElementById('save-to-camera-roll');
 
 
 
-    if (!imageFile || !audioFile) {
+    if (imageInput.files.length > 0) {
 
-        alert("يرجى تحديد صورة وتسجيل الصوت قبل الرفع.");
+        imageFile = imageInput.files[0];
+
+        const reader = new FileReader();
+
+
+
+        reader.onload = function(event) {
+
+            previewImage.src = event.target.result;
+
+            previewImage.style.display = 'block';
+
+            saveButton.style.display = 'block';
+
+        };
+
+
+
+        reader.readAsDataURL(imageFile);
+
+    } else {
+
+        alert("⚠️ يرجى تحميل صورة.");
+
+    }
+
+});
+
+
+
+// 🎥 إنشاء الفيديو
+
+document.getElementById('save-to-camera-roll').addEventListener('click', async () => {
+
+    if (!audioBlob || !imageFile) {
+
+        alert("⚠️ يرجى تسجيل الصوت وتحميل صورة أولًا.");
 
         return;
 
@@ -117,92 +156,149 @@ async function uploadFiles() {
 
 
 
-    const formData = new FormData();
+    const canvas = document.createElement('canvas');
 
-    formData.append("image", imageFile);
+    const context = canvas.getContext('2d');
 
-    formData.append("audio", audioFile);
+    const image = new Image();
 
-
-
-    try {
-
-        const response = await fetch("https://eid-card-9j9shvyj6-abeers-projects-cb73c349.vercel.app/upload", {
-
-            method: "POST",
-
-            body: formData
-
-        });
+    const audio = new Audio(audioUrl);
 
 
 
-        const result = await response.json();
+    image.src = URL.createObjectURL(imageFile);
 
-        if (response.ok) {
-
-            const videoUrl = result.videoUrl;
-
-            const videoElement = document.getElementById("videoPlayer");
-
-            videoElement.src = videoUrl;
-
-            videoElement.style.display = "block";
+    await new Promise((resolve) => (image.onload = resolve));
 
 
 
-            // إظهار زر الحفظ بعد نجاح العملية
+    canvas.width = image.width;
 
-            document.getElementById("saveButton").style.display = "block";
+    canvas.height = image.height;
 
-            document.getElementById("saveButton").setAttribute("data-url", videoUrl);
+    context.drawImage(image, 0, 0);
 
-        } else {
 
-            alert("حدث خطأ أثناء رفع الملفات.");
 
-        }
+    const stream = canvas.captureStream(30);
 
-    } catch (error) {
+    const videoRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
 
-        console.error("خطأ:", error);
+    const videoChunks = [];
 
-        alert("تعذر الاتصال بالخادم.");
 
-    }
+
+    videoRecorder.ondataavailable = event => {
+
+        videoChunks.push(event.data);
+
+    };
+
+
+
+    videoRecorder.start();
+
+    audio.play();
+
+
+
+    audio.onended = () => {
+
+        videoRecorder.stop();
+
+        videoRecorder.onstop = async () => {
+
+            const videoBlob = new Blob(videoChunks, { type: 'video/webm' });
+
+
+
+            // تحويل الفيديو إلى MP4
+
+            const finalVideoBlob = await convertWebMToMP4(videoBlob);
+
+            const videoUrl = URL.createObjectURL(finalVideoBlob);
+
+
+
+            // عرض الفيديو بعد إنشائه
+
+            const previewVideo = document.createElement('video');
+
+            previewVideo.src = videoUrl;
+
+            previewVideo.controls = true;
+
+            previewVideo.style.width = '100%';
+
+            previewVideo.style.marginTop = '10px';
+
+
+
+            // زر التنزيل
+
+            const downloadButton = document.createElement('a');
+
+            downloadButton.href = videoUrl;
+
+            downloadButton.download = 'eid_greeting_card.mp4';
+
+            downloadButton.textContent = '📥 تنزيل الفيديو';
+
+            downloadButton.style.display = 'block';
+
+            downloadButton.style.background = '#4CAF50';
+
+            downloadButton.style.color = 'white';
+
+            downloadButton.style.padding = '10px';
+
+            downloadButton.style.marginTop = '10px';
+
+            downloadButton.style.textAlign = 'center';
+
+            downloadButton.style.borderRadius = '5px';
+
+            downloadButton.style.textDecoration = 'none';
+
+
+
+            document.querySelector('.preview-section').appendChild(previewVideo);
+
+            document.querySelector('.preview-section').appendChild(downloadButton);
+
+
+
+            alert("🎉 تم إنشاء الفيديو بنجاح!");
+
+        };
+
+    };
+
+});
+
+
+
+// **📌 تحويل WebM إلى MP4**
+
+async function convertWebMToMP4(videoBlob) {
+
+    return new Promise(resolve => {
+
+        const reader = new FileReader();
+
+        reader.readAsArrayBuffer(videoBlob);
+
+        reader.onload = async () => {
+
+            const buffer = new Uint8Array(reader.result);
+
+            const finalBlob = new Blob([buffer], { type: 'video/mp4' });
+
+            resolve(finalBlob);
+
+        };
+
+    });
 
 }
 
-
-
-function saveToCameraRoll() {
-
-    const videoUrl = document.getElementById("saveButton").getAttribute("data-url");
-
-    if (!videoUrl) {
-
-        alert("لا يوجد فيديو لحفظه!");
-
-        return;
-
-    }
-
-
-
-    const a = document.createElement("a");
-
-    a.href = videoUrl;
-
-    a.download = "eid_greeting.mp4";
-
-    document.body.appendChild(a);
-
-    a.click();
-
-    document.body.removeChild(a);
-
-
-
-    alert("تم حفظ الفيديو! يمكنك العثور عليه في التنزيلات أو ألبوم الكاميرا.");
-
-}
