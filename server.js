@@ -141,6 +141,16 @@ app.listen(PORT, "0.0.0.0", () => {
 */
 
 
+const express = require('express');
+
+const multer = require('multer');
+
+const ffmpeg = require('fluent-ffmpeg');
+
+const path = require('path');
+
+const fs = require('fs');
+
 
 
 const app = express();
@@ -148,6 +158,8 @@ const app = express();
 const upload = multer({ dest: 'uploads/' });
 
 
+
+// تعريف route لاستقبال الصوت والصورة
 
 app.post('/merge', upload.fields([{ name: 'audio' }, { name: 'image' }]), (req, res) => {
 
@@ -158,6 +170,8 @@ app.post('/merge', upload.fields([{ name: 'audio' }, { name: 'image' }]), (req, 
     const outputPath = path.join(__dirname, 'output.mp4');
 
 
+
+    // استخدام FFmpeg لدمج الصوت مع الصورة
 
     ffmpeg()
 
@@ -173,7 +187,11 @@ app.post('/merge', upload.fields([{ name: 'audio' }, { name: 'image' }]), (req, 
 
         .on('end', () => {
 
+            // إرسال الفيديو النهائي إلى العميل
+
             res.download(outputPath, 'video.mp4', () => {
+
+                // حذف الملفات المؤقتة بعد الانتهاء
 
                 fs.unlinkSync(audioPath);
 
@@ -199,9 +217,13 @@ app.post('/merge', upload.fields([{ name: 'audio' }, { name: 'image' }]), (req, 
 
 
 
-app.listen(3000, () => {
+// بدء الخادم على المنفذ المحدد (أو 3000 افتراضيًا)
 
-    console.log('الخادم يعمل على http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+
+    console.log(`الخادم يعمل على http://localhost:${PORT}`);
 
 });
 
